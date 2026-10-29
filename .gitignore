@@ -1,0 +1,15 @@
+
+node_modules/
+.env
+.env.*
+!.env.example
+
+# Local SQLite database and temporary database files
+data/*.db
+data/*.db-*
+data/*.sqlite
+data/*.sqlite-*
+
+# Local backups and logs
+server.backup.js
+*.log

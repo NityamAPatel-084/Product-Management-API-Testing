@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#101827" />
+  <title>Product API Studio</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="/" aria-label="Product API Studio home">
+        <span class="brand-mark">P</span>
+        <span><strong>Product API</strong><small>MANAGEMENT STUDIO</small></span>
+      </a>
+      <div class="side-label">WORKSPACE</div>
+      <a class="side-link active" href="#overview"><span class="side-icon">▦</span> Overview</a>
+      <a class="side-link" href="#products"><span class="side-icon">◇</span> Products</a>
+      <div class="side-label endpoints-label">API ENDPOINTS</div>
+      <a class="endpoint-link" href="#get-all"><span class="method get">GET</span><span>All products</span></a>
+      <a class="endpoint-link" href="#get-one"><span class="method get">GET</span><span>Product by ID</span></a>
+      <a class="endpoint-link" href="#create"><span class="method post">POST</span><span>Create product</span></a>
+      <a class="endpoint-link" href="#update"><span class="method put">PUT</span><span>Update product</span></a>
+      <a class="endpoint-link" href="#delete"><span class="method delete">DEL</span><span>Delete product</span></a>
+      <div class="sidebar-bottom">
+        <span class="live-dot"></span>
+        <div><strong>Local API</strong><small id="sidebar-api-url">/api/products</small></div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div class="mobile-brand"><span class="brand-mark">P</span><strong>Product API Studio</strong></div>
+        <div class="breadcrumb">Workspace <span>/</span> <strong>Product API</strong></div>
+        <div class="topbar-right">
+          <span class="environment"><span class="live-dot"></span> LOCAL ENVIRONMENT</span>
+          <button class="button button-secondary button-small" id="refresh-top" type="button">↻ Refresh data</button>
+        </div>
+      </header>
+
+      <section class="page-intro" id="overview">
+        <div>
+          <div class="eyebrow">API MANAGEMENT <span>•</span> CRUD WORKSPACE</div>
+          <h1>Product API Studio</h1>
+          <p>Manage products and test every endpoint directly from your browser.</p>
+        </div>
+        <div class="api-base-card">
+          <span class="api-icon">⌘</span>
+          <div><small>BASE URL</small><strong id="base-url">http://localhost:3000/api/products</strong></div>
+          <span class="connected-pill"><span class="live-dot"></span> Same origin</span>
+        </div>
+      </section>
+
+      <section class="stats-grid" aria-label="Product statistics">
+        <article class="stat-card">
+          <div class="stat-top"><span>Total products</span><span class="stat-icon purple">▦</span></div>
+          <div class="stat-value" id="total-products">—</div>
+          <div class="stat-note">Records returned by the API</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-top"><span>Total stock units</span><span class="stat-icon blue">▤</span></div>
+          <div class="stat-value" id="total-stock">—</div>
+          <div class="stat-note">Sum of product stock values</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-top"><span>Inventory value</span><span class="stat-icon green">₹</span></div>
+          <div class="stat-value" id="inventory-value">—</div>
+          <div class="stat-note">Price × stock across products</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-top"><span>API status</span><span class="stat-icon amber">⌁</span></div>
+          <div class="stat-value status-value" id="api-status">Checking</div>
+          <div class="stat-note" id="last-checked">Waiting for first response</div>
+        </article>
+      </section>
+
+      <section class="content-grid">
+        <div class="panel products-panel" id="products">
+          <div class="panel-heading">
+            <div><div class="eyebrow">YOUR INVENTORY</div><h2>Products</h2><p>Live data from <code>GET /api/products</code></p></div>
+            <button class="button button-primary" id="refresh-products" type="button"><span>↻</span> Fetch products</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>PRODUCT</th><th>PRICE</th><th>STOCK</th><th>ID</th><th>ACTIONS</th></tr></thead>
+              <tbody id="product-rows"><tr><td colspan="5" class="empty-state">Fetching products from your API…</td></tr></tbody>
+            </table>
+          </div>
+          <div class="table-footer"><span id="table-summary">Loading inventory…</span><span class="data-source"><span class="live-dot"></span> API response</span></div>
+        </div>
+
+        <aside class="panel response-panel">
+          <div class="panel-heading response-heading">
+            <div><div class="eyebrow">LIVE INSPECTOR</div><h2>Response</h2><p>Latest request details</p></div>
+            <span class="response-symbol">{ }</span>
+          </div>
+          <div class="response-meta">
+            <span class="method get" id="response-method">GET</span>
+            <span class="response-url" id="response-url">/api/products</span>
+            <span class="status-chip neutral" id="response-status">Waiting</span>
+          </div>
+          <div class="response-label"><span>RESPONSE BODY</span><button type="button" class="text-button" id="copy-response">Copy JSON</button></div>
+          <pre class="response-body" id="response-body"><code>Run a request to see its response here.</code></pre>
+          <div class="response-foot"><span class="response-dot"></span><span id="response-message">Requests are sent to your running Express API.</span></div>
+        </aside>
+      </section>
+
+      <section class="operations-section" id="api-testing">
+        <div class="section-heading">
+          <div><div class="eyebrow">REQUEST BUILDER</div><h2>Test your endpoints</h2><p>Each form sends a real HTTP request to your Express backend.</p></div>
+          <span class="form-hint"><span class="required-star">*</span> Required fields</span>
+        </div>
+
+        <div class="operation-grid">
+          <article class="operation-card" id="get-all">
+            <div class="operation-title"><span class="method get">GET</span><div><h3>Get all products</h3><p>Retrieve the complete product list.</p></div></div>
+            <div class="route-line"><span>GET</span><code>/api/products</code></div>
+            <form id="get-all-form" class="request-form">
+              <p class="form-description">No parameters required.</p>
+              <button class="button button-method-get full-width" type="submit">Send GET request <span>→</span></button>
+            </form>
+          </article>
+
+          <article class="operation-card" id="get-one">
+            <div class="operation-title"><span class="method get">GET</span><div><h3>Get product by ID</h3><p>Fetch one product using its ID.</p></div></div>
+            <div class="route-line"><span>GET</span><code>/api/products/:id</code></div>
+            <form id="get-one-form" class="request-form">
+              <label for="get-id">Product ID <span class="required-star">*</span></label>
+              <input id="get-id" name="id" type="number" min="1" step="1" placeholder="e.g. 1" required />
+              <button class="button button-method-get full-width" type="submit">Send GET request <span>→</span></button>
+            </form>
+          </article>
+
+          <article class="operation-card" id="create">
+            <div class="operation-title"><span class="method post">POST</span><div><h3>Create product</h3><p>Add a new product to the API.</p></div></div>
+            <div class="route-line"><span>POST</span><code>/api/products</code></div>
+            <form id="create-form" class="request-form product-form">
+              <label for="create-name">Product name <span class="required-star">*</span></label>
+              <input id="create-name" name="name" type="text" placeholder="e.g. Wireless Mouse" required />
+              <label for="create-description">Description <span class="required-star">*</span></label>
+              <input id="create-description" name="description" type="text" placeholder="Short description" required />
+              <div class="field-row">
+                <div><label for="create-price">Price (₹) <span class="required-star">*</span></label><input id="create-price" name="price" type="number" min="0" step="0.01" placeholder="1299" required /></div>
+                <div><label for="create-stock">Stock <span class="required-star">*</span></label><input id="create-stock" name="stock" type="number" min="0" step="1" placeholder="25" required /></div>
+              </div>
+              <button class="button button-method-post full-width" type="submit">Send POST request <span>→</span></button>
+            </form>
+          </article>
+
+          <article class="operation-card" id="update">
+            <div class="operation-title"><span class="method put">PUT</span><div><h3>Update product</h3><p>Replace a product's details by ID.</p></div></div>
+            <div class="route-line"><span>PUT</span><code>/api/products/:id</code></div>
+            <form id="update-form" class="request-form product-form">
+              <label for="update-id">Product ID <span class="required-star">*</span></label>
+              <input id="update-id" name="id" type="number" min="1" step="1" placeholder="e.g. 1" required />
+              <label for="update-name">Product name <span class="required-star">*</span></label>
+              <input id="update-name" name="name" type="text" placeholder="Product name" required />
+              <label for="update-description">Description <span class="required-star">*</span></label>
+              <input id="update-description" name="description" type="text" placeholder="Short description" required />
+              <div class="field-row">
+                <div><label for="update-price">Price (₹) <span class="required-star">*</span></label><input id="update-price" name="price" type="number" min="0" step="0.01" placeholder="999" required /></div>
+                <div><label for="update-stock">Stock <span class="required-star">*</span></label><input id="update-stock" name="stock" type="number" min="0" step="1" placeholder="10" required /></div>
+              </div>
+              <button class="button button-method-put full-width" type="submit">Send PUT request <span>→</span></button>
+            </form>
+          </article>
+
+          <article class="operation-card delete-card" id="delete">
+            <div class="operation-title"><span class="method delete">DEL</span><div><h3>Delete product</h3><p>Remove a product by its ID.</p></div></div>
+            <div class="route-line"><span>DELETE</span><code>/api/products/:id</code></div>
+            <form id="delete-form" class="request-form">
+              <label for="delete-id">Product ID <span class="required-star">*</span></label>
+              <input id="delete-id" name="id" type="number" min="1" step="1" placeholder="e.g. 2" required />
+              <div class="warning-note"><span>!</span><p>This permanently removes the product from the current in-memory list. It will return after a server restart if it was part of the initial data.</p></div>
+              <button class="button button-method-delete full-width" type="submit">Send DELETE request <span>→</span></button>
+            </form>
+          </article>
+        </div>
+      </section>
+
+      <footer class="page-footer"><span>Product API Management</span><span>HTML <b>•</b> CSS <b>•</b> JavaScript <b>•</b> Express</span></footer>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

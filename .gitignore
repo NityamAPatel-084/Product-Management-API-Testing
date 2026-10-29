@@ -12,4 +12,5 @@ data/*.sqlite-*
 
 # Local backups and logs
 server.backup.js
+server.sqlite-backup.js
 *.log

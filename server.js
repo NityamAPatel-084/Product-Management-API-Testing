@@ -1,58 +1,25 @@
 
+require("dotenv").config();
+
 const express = require("express");
 const path = require("path");
-const fs = require("fs");
-const Database = require("better-sqlite3");
+const { Pool } = require("pg");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Create the data directory if it does not exist
-const dataDirectory = path.join(__dirname, "data");
-fs.mkdirSync(dataDirectory, { recursive: true });
-
-// Connect to the persistent SQLite database
-const db = new Database(path.join(dataDirectory, "products.db"));
-
-db.pragma("journal_mode = WAL");
-
-// Create the table automatically if it does not exist
-db.exec(`
-  CREATE TABLE IF NOT EXISTS products (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    description TEXT NOT NULL,
-    price REAL NOT NULL CHECK (price >= 0),
-    stock INTEGER NOT NULL CHECK (
-      stock >= 0 AND stock = CAST(stock AS INTEGER)
-    )
-  );
-`);
-
-// Add the original sample products only if the table is empty
-const productCount = db.prepare(
-  "SELECT COUNT(*) AS count FROM products"
-).get().count;
-
-if (productCount === 0) {
-  const insertProduct = db.prepare(`
-    INSERT INTO products (name, description, price, stock)
-    VALUES (?, ?, ?, ?)
-  `);
-
-  const seedProducts = db.transaction(() => {
-    insertProduct.run("Laptop", "Business laptop", 75000, 10);
-    insertProduct.run("Mobile Phone", "Android smartphone", 25000, 20);
-  });
-
-  seedProducts();
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL is missing from environment variables.");
 }
 
-// Middleware
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-// Validate product input
 function validateProduct(req, res, next) {
   const { name, description, price, stock } = req.body;
 
@@ -75,118 +42,144 @@ function validateProduct(req, res, next) {
 
   req.body.name = name.trim();
   req.body.description = description.trim();
-
   next();
 }
 
-// GET: Retrieve all products
-app.get("/api/products", (req, res) => {
-  const products = db.prepare(
-    "SELECT * FROM products ORDER BY id"
-  ).all();
+function formatProduct(row) {
+  return {
+    ...row,
+    id: Number(row.id),
+    price: Number(row.price),
+    stock: Number(row.stock),
+  };
+}
 
-  res.status(200).json({
-    count: products.length,
-    data: products,
-  });
+// GET: Retrieve all products
+app.get("/api/products", async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      "SELECT * FROM products ORDER BY id"
+    );
+
+    const products = result.rows.map(formatProduct);
+
+    res.status(200).json({
+      count: products.length,
+      data: products,
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 // GET: Retrieve a product by ID
-app.get("/api/products/:id", (req, res) => {
+app.get("/api/products/:id", async (req, res, next) => {
   const id = Number(req.params.id);
 
   if (!Number.isInteger(id) || id < 1) {
     return res.status(400).json({ message: "Invalid product ID" });
   }
 
-  const product = db.prepare(
-    "SELECT * FROM products WHERE id = ?"
-  ).get(id);
+  try {
+    const result = await pool.query(
+      "SELECT * FROM products WHERE id = $1",
+      [id]
+    );
 
-  if (!product) {
-    return res.status(404).json({ message: "Product not found" });
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    res.status(200).json({
+      data: formatProduct(result.rows[0]),
+    });
+  } catch (error) {
+    next(error);
   }
-
-  res.status(200).json({ data: product });
 });
 
 // POST: Create a product
-app.post("/api/products", validateProduct, (req, res) => {
+app.post("/api/products", validateProduct, async (req, res, next) => {
   const { name, description, price, stock } = req.body;
 
-  const result = db.prepare(`
-    INSERT INTO products (name, description, price, stock)
-    VALUES (?, ?, ?, ?)
-  `).run(name, description, price, stock);
+  try {
+    const result = await pool.query(
+      `INSERT INTO products (name, description, price, stock)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [name, description, price, stock]
+    );
 
-  const newProduct = db.prepare(
-    "SELECT * FROM products WHERE id = ?"
-  ).get(Number(result.lastInsertRowid));
-
-  res.status(201).json({
-    message: "Product created successfully",
-    data: newProduct,
-  });
+    res.status(201).json({
+      message: "Product created successfully",
+      data: formatProduct(result.rows[0]),
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 // PUT: Update an existing product
-app.put("/api/products/:id", validateProduct, (req, res) => {
-  const id = Number(req.params.id);
+app.put(
+  "/api/products/:id",
+  validateProduct,
+  async (req, res, next) => {
+    const id = Number(req.params.id);
 
-  if (!Number.isInteger(id) || id < 1) {
-    return res.status(400).json({ message: "Invalid product ID" });
+    if (!Number.isInteger(id) || id < 1) {
+      return res.status(400).json({ message: "Invalid product ID" });
+    }
+
+    const { name, description, price, stock } = req.body;
+
+    try {
+      const result = await pool.query(
+        `UPDATE products
+         SET name = $1, description = $2, price = $3, stock = $4
+         WHERE id = $5
+         RETURNING *`,
+        [name, description, price, stock, id]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+
+      res.status(200).json({
+        message: "Product updated successfully",
+        data: formatProduct(result.rows[0]),
+      });
+    } catch (error) {
+      next(error);
+    }
   }
-
-  const existing = db.prepare(
-    "SELECT id FROM products WHERE id = ?"
-  ).get(id);
-
-  if (!existing) {
-    return res.status(404).json({ message: "Product not found" });
-  }
-
-  const { name, description, price, stock } = req.body;
-
-  db.prepare(`
-    UPDATE products
-    SET name = ?, description = ?, price = ?, stock = ?
-    WHERE id = ?
-  `).run(name, description, price, stock, id);
-
-  const updatedProduct = db.prepare(
-    "SELECT * FROM products WHERE id = ?"
-  ).get(id);
-
-  res.status(200).json({
-    message: "Product updated successfully",
-    data: updatedProduct,
-  });
-});
+);
 
 // DELETE: Remove a product
-app.delete("/api/products/:id", (req, res) => {
+app.delete("/api/products/:id", async (req, res, next) => {
   const id = Number(req.params.id);
 
   if (!Number.isInteger(id) || id < 1) {
     return res.status(400).json({ message: "Invalid product ID" });
   }
 
-  const deletedProduct = db.prepare(
-    "SELECT * FROM products WHERE id = ?"
-  ).get(id);
+  try {
+    const result = await pool.query(
+      "DELETE FROM products WHERE id = $1 RETURNING *",
+      [id]
+    );
 
-  if (!deletedProduct) {
-    return res.status(404).json({ message: "Product not found" });
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    res.status(200).json({
+      message: "Product deleted successfully",
+      data: formatProduct(result.rows[0]),
+    });
+  } catch (error) {
+    next(error);
   }
-
-  db.prepare(
-    "DELETE FROM products WHERE id = ?"
-  ).run(id);
-
-  res.status(200).json({
-    message: "Product deleted successfully",
-    data: deletedProduct,
-  });
 });
 
 // Handle unknown routes
@@ -194,7 +187,7 @@ app.use((req, res) => {
   res.status(404).json({ message: "Route not found" });
 });
 
-// Handle malformed JSON and server errors
+// Error handler
 app.use((err, req, res, next) => {
   if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
     return res.status(400).json({ message: "Invalid JSON body" });
@@ -204,7 +197,20 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: "Internal server error" });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-});
+// Verify database connection before starting the server
+async function startServer() {
+  try {
+    await pool.query("SELECT 1");
+
+    app.listen(PORT, () => {
+      console.log(`Server running at http://localhost:${PORT}`);
+      console.log("Connected to PostgreSQL.");
+    });
+  } catch (error) {
+    console.error("Could not connect to PostgreSQL:", error.message);
+    process.exitCode = 1;
+    await pool.end();
+  }
+}
+
+startServer();

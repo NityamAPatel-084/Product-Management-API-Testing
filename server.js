@@ -8,6 +8,10 @@ const { Pool } = require("pg");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on port ${PORT}`);
+});
+
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is missing from environment variables.");
 }

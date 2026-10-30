@@ -21,4 +21,4 @@ WHERE NOT EXISTS (
     SELECT 1 FROM products WHERE id = 2
 );
 
-select * from products order by id;
+select * from products order by price desc;
